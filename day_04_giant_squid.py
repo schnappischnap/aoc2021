@@ -1,56 +1,39 @@
+import numpy as np
+
+
 def part_1(data):
     raw_calls, *raw_boards = data.split("\n\n")
-    calls = {value: index for index, value in enumerate(map(int, raw_calls.split(",")))}
+    calls = [int(i) for i in raw_calls.split(",")]
 
-    boards = []
-    for raw_board in raw_boards:
-        board = [[int(v) for v in line.split(" ") if v != ""] for line in raw_board.split("\n")]
-        boards.append(
-            {
-                "values": [v for line in board for v in line], 
-                "lines" : [*board, *zip(*board)]
-            }
-        )
-
-    fewest_calls = 100
-    score = 0
-    for board in boards:
-        for line in board["lines"]:
-            last_call, call_count = max((v for v in calls.items() if v[0] in line), key=lambda p: p[1])
-            if call_count < fewest_calls:
-                fewest_calls = call_count
-                score = (sum(v for v in board["values"] if calls[v] > call_count) * last_call)
-    return score
+    boards = np.loadtxt(raw_boards, int).reshape(-1, 5, 5)
+    for i in calls:
+        boards[boards == i] = -1
+        marked = boards == -1
+        for board in boards:
+            marked = board == -1
+            if any(marked.all(0) | marked.all(1)):
+                return sum(board[~marked]) * i
 
 
 def part_2(data):
     raw_calls, *raw_boards = data.split("\n\n")
-    calls = {value: index for index, value in enumerate(map(int, raw_calls.split(",")))}
+    calls = [int(i) for i in raw_calls.split(",")]
 
-    boards = []
-    for raw_board in raw_boards:
-        board = [[int(v) for v in line.split(" ") if v != ""] for line in raw_board.split("\n")]
-        boards.append(
-            {
-                "values": [v for line in board for v in line], 
-                "lines" : [*board, *zip(*board)]
-            }
-        )
+    boards = np.loadtxt(raw_boards, int).reshape(-1, 5, 5)
+    uncompleted_boards = [board for board in boards]
+    for i in calls:
+        boards[boards == i] = -1
+        marked = boards == -1
 
-    most_calls = 0
-    worst_score = 0
-    for board in boards:
-        fewest_calls = 100
-        score = 0
-        for line in board["lines"]:
-            last_call, call_count = max((v for v in calls.items() if v[0] in line), key=lambda p: p[1])
-            if call_count < fewest_calls:
-                fewest_calls = call_count
-                score = (sum(v for v in board["values"] if calls[v] > call_count) * last_call)
-        if fewest_calls > most_calls:
-            most_calls = fewest_calls
-            worst_score = score
-    return worst_score
+        next_uncompleted_boards = []
+        for board in uncompleted_boards:
+            marked = board == -1
+            if not any(marked.all(0) | marked.all(1)):
+                next_uncompleted_boards.append(board)
+        uncompleted_boards = next_uncompleted_boards[:]
+
+        if len(uncompleted_boards) == 0:
+            return sum(board[~marked]) * i
 
 
 if __name__ == "__main__":
