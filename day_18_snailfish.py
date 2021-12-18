@@ -1,86 +1,59 @@
-# https://github.com/benediktwerner/AdventOfCode/blob/master/2021/day18/sol.py
-# Sorry for the eval.
-
-import math
 import itertools
 import functools
+import re
 
 
 def part_1(data):
-    snailfish = functools.reduce(add, [eval(line) for line in data])
-    return magnitude(snailfish)
+    data = [line.strip() for line in data]
+    return magnitude(functools.reduce(add, data))
 
 
 def part_2(data):
-    data = [eval(line) for line in data]
+    data = [line.strip() for line in data]
     return max(magnitude(add(a, b)) for a, b in itertools.permutations(data, 2))
 
 
-def add_left(fish, value):
-    if value is None:
-        return fish
-    if isinstance(fish, int):
-        return fish + value
-    return [add_left(fish[0], value), fish[1]]
+def add(fish, new_fish):
+    fish = "[" + fish + "," + new_fish + "]"
 
+    while True:
+        depths = itertools.accumulate(1 if v == "[" else -1 if v == "]" else 0 for v in fish)
+        start = next((i for i, depth in enumerate(depths) if depth == 5), None)
 
-def add_right(fish, value):
-    if value is None:
-        return fish
-    if isinstance(fish, int):
-        return fish + value
-    return [fish[0], add_right(fish[1], value)]
+        if start:
+            stop = fish.index("]", start)
+            left, right = fish[:start], fish[stop+1:]
+            a, b = map(int, fish[start + 1 : stop].split(","))
 
+            match = re.search("\d+", left[::-1])
+            if match:
+                value = int(match.group()[::-1]) + a
+                left = left[:-match.end()] + str(value) + left[-match.start():]
 
-def explode(fish, depth=0):
-    if isinstance(fish, int):
-        return False, None, fish, None  # pmsl
+            match = re.search("\d+", right)
+            if match:
+                value = int(match.group()) + b
+                right = right[: match.start()] + str(value) + right[match.end() :]
 
-    l, r = fish
-    if depth == 4:
-        return True, l, 0, r
+            fish = left + "0" + right
+        elif match := re.search("\d\d+", fish):
+            value = int(match.group())
+            fish = re.sub("\d\d+", f"[{value//2},{(value+1)//2}]", fish, 1)
+        else:
+            break
 
-    exploded, l2, l, r2 = explode(l, depth + 1)
-    if exploded:
-        return True, l2, [l, add_left(r, r2)], None
-
-    exploded, l2, r, r2 = explode(r, depth + 1)
-    if exploded:
-        return True, None, [add_right(l, l2), r], r2
-
-    return False, None, fish, None
-
-
-def split(fish):
-    if isinstance(fish, int):
-        if fish > 9:
-            return True, [math.floor(fish / 2), math.ceil(fish / 2)]
-        return False, fish
-
-    l, r = fish
-    splitted, l = split(l)
-    if splitted:
-        return True, [l, r]
-        
-    splitted, r = split(r)
-    return splitted, [l, r]
-
-
-def add(a, b):
-    snailfish = [a, b]
-    changed = True
-    while changed:
-        changed, _, snailfish, _ = explode(snailfish)
-        if changed:
-            continue
-        changed, snailfish = split(snailfish)
-    return snailfish
+    return fish
 
 
 def magnitude(fish):
-    if isinstance(fish, int):
-        return fish
-    return 3 * magnitude(fish[0]) + 2 * magnitude(fish[1])
+    while True:
+        if match := re.search("\[(\d+),(\d+)\]", fish):
+            a, b = map(int, match.groups())
+            fish = fish[: match.start()] + str(a * 3 + b * 2) + fish[match.end() :]
+        else:
+            break
+
+    return int(fish)
 
 
 if __name__ == "__main__":
